@@ -50,7 +50,7 @@ kbd {
 }
 
 .pool-canvas canvas {
-  cursor: grab;
+  cursor: crosshair;
   outline: none;
 }
 
@@ -86,6 +86,37 @@ kbd {
   z-index: 2;
 }
 
+.reticle {
+  color: rgba(224, 255, 255, 0.92);
+  font-size: 22px;
+  font-weight: 200;
+  left: 50%;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  text-shadow: 0 0 15px rgba(88, 245, 236, 0.82);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: opacity 180ms ease;
+  z-index: 3;
+}
+
+.is-immersed .reticle {
+  opacity: 1;
+}
+
+.is-immersed .map-legend,
+.is-immersed .interaction-dock {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.is-immersed .horizon-card {
+  opacity: 0.54;
+}
+
 .topbar {
   top: 0;
   left: 0;
@@ -103,6 +134,47 @@ kbd {
 .interaction-dock,
 .footer-ui {
   text-shadow: 0 2px 18px rgba(0, 19, 29, 0.45);
+}
+
+.enter-pool {
+  align-items: center;
+  background: rgba(3, 35, 50, 0.66);
+  border: 1px solid rgba(183, 255, 248, 0.55);
+  box-shadow: 0 0 0 1px rgba(45, 216, 207, 0.1), 0 12px 50px rgba(0, 20, 32, 0.44);
+  color: #e6ffff;
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  left: 50%;
+  min-width: 226px;
+  padding: 13px 18px 12px;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+  z-index: 4;
+}
+
+.enter-pool:hover,
+.enter-pool:focus-visible {
+  background: rgba(15, 94, 106, 0.84);
+  border-color: #cefffc;
+  outline: none;
+  transform: translate(-50%, -52%);
+}
+
+.enter-pool span {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+
+.enter-pool small {
+  color: rgba(218, 253, 255, 0.67);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .wordmark {
@@ -368,6 +440,8 @@ kbd {
   .horizon-card p { font-size: 12px; max-width: 175px; }
   .horizon-card span { font-size: 8px; }
   .footer-ui { bottom: 20px; left: 20px; right: 20px; }
+  .enter-pool { min-width: 210px; padding: 12px 14px; }
+  .enter-pool small { font-size: 8px; }
   .desktop-hint { display: none; }
 }
 

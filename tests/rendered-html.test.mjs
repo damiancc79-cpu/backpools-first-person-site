@@ -32,7 +32,7 @@ test("server-renders the Backpools exploration shell", async () => {
   assert.match(html, /<title>Backpools — Liminal Water Simulator<\/title>/i);
   assert.match(html, /LIMINAL WATER SIMULATOR/);
   assert.match(html, /BACKPOOLS/);
-  assert.match(html, /Find what drifted/);
+  assert.match(html, /Wade toward the/);
   assert.match(html, /Ping fruit/);
   assert.match(html, /WATERFORM\s*\/\s*LIVE/);
   assert.doesNotMatch(html, /codex-preview|Building your site|react-loading-skeleton/i);
@@ -47,7 +47,8 @@ test("keeps the starter loading preview out of the finished site", async () => {
   ]);
 
   assert.match(page, /from "three"/);
-  assert.match(page, /OrbitControls/);
+  assert.match(page, /PointerLockControls/);
+  assert.match(page, /ENTER THE WATER/);
   assert.match(page, /stepWater/);
   assert.match(page, /addImpulse/);
   assert.match(page, /fruitSpots/);

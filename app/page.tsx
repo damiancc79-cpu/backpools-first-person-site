@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 
 type FruitKind = "clementine" | "mango" | "lime" | "plum" | "pear";
 
@@ -22,7 +22,15 @@ type Collectible = {
   root: THREE.Group;
 };
 
+type Collider = {
+  maxX: number;
+  maxZ: number;
+  minX: number;
+  minZ: number;
+};
+
 type SceneApi = {
+  enterExperience: () => void;
   focusNext: () => void;
   makeRipple: () => void;
 };
@@ -132,6 +140,7 @@ function addWall(
   length: number,
   axis: "x" | "z",
   material: THREE.Material,
+  colliders?: Collider[],
 ) {
   const horizontal = axis === "x";
   const wall = new THREE.Mesh(
@@ -150,6 +159,13 @@ function addWall(
   cap.position.set(x, 8.64, z);
   cap.castShadow = true;
   scene.add(cap);
+
+  colliders?.push({
+    minX: x - (horizontal ? length / 2 + 0.56 : 0.86),
+    maxX: x + (horizontal ? length / 2 + 0.56 : 0.86),
+    minZ: z - (horizontal ? 0.86 : length / 2 + 0.56),
+    maxZ: z + (horizontal ? 0.86 : length / 2 + 0.56),
+  });
 }
 
 function addPlatform(
@@ -183,6 +199,7 @@ export default function Home() {
   const [collected, setCollected] = useState(0);
   const [message, setMessage] = useState("The water is listening.");
   const [webglError, setWebglError] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -214,8 +231,9 @@ export default function Home() {
     scene.background = new THREE.Color(0x061b2a);
     scene.fog = new THREE.FogExp2(0x061b2a, 0.014);
 
-    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 280);
-    camera.position.set(37, 25, 46);
+    const camera = new THREE.PerspectiveCamera(67, 1, 0.1, 280);
+    camera.position.set(-76, 1.88, 43);
+    camera.lookAt(-61, 1.88, 23);
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, window.innerWidth < 700 ? 1.25 : 1.55));
     renderer.setSize(mount.clientWidth, mount.clientHeight, false);
@@ -226,15 +244,10 @@ export default function Home() {
     renderer.toneMappingExposure = 1.16;
     mount.appendChild(renderer.domElement);
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.055;
-    controls.enablePan = false;
-    controls.minDistance = 15;
-    controls.maxDistance = 114;
-    controls.maxPolarAngle = Math.PI * 0.45;
-    controls.minPolarAngle = Math.PI * 0.18;
-    controls.target.set(2, 1.2, -2);
+    const controls = new PointerLockControls(camera, renderer.domElement);
+    controls.pointerSpeed = 0.82;
+    controls.minPolarAngle = Math.PI * 0.16;
+    controls.maxPolarAngle = Math.PI * 0.84;
 
     const hemisphere = new THREE.HemisphereLight(0xc8fbff, 0x052439, 1.65);
     scene.add(hemisphere);
@@ -293,17 +306,18 @@ export default function Home() {
     ceiling.receiveShadow = true;
     scene.add(ceiling);
 
-    addWall(scene, 0, -58, width, "x", tileMaterial);
-    addWall(scene, 0, 58, width, "x", tileMaterial);
-    addWall(scene, -88, 0, depth, "z", tileMaterial);
-    addWall(scene, 88, 0, depth, "z", tileMaterial);
-    addWall(scene, -35, -17, 44, "x", tileMaterial);
-    addWall(scene, -12, -33, 31, "z", tileMaterial);
-    addWall(scene, 18, 18, 42, "x", tileMaterial);
-    addWall(scene, 39, -11, 37, "z", tileMaterial);
-    addWall(scene, 61, 25, 33, "x", tileMaterial);
-    addWall(scene, 63, -29, 29, "x", tileMaterial);
-    addWall(scene, -62, 17, 35, "z", tileMaterial);
+    const colliders: Collider[] = [];
+    addWall(scene, 0, -58, width, "x", tileMaterial, colliders);
+    addWall(scene, 0, 58, width, "x", tileMaterial, colliders);
+    addWall(scene, -88, 0, depth, "z", tileMaterial, colliders);
+    addWall(scene, 88, 0, depth, "z", tileMaterial, colliders);
+    addWall(scene, -35, -17, 44, "x", tileMaterial, colliders);
+    addWall(scene, -12, -33, 31, "z", tileMaterial, colliders);
+    addWall(scene, 18, 18, 42, "x", tileMaterial, colliders);
+    addWall(scene, 39, -11, 37, "z", tileMaterial, colliders);
+    addWall(scene, 61, 25, 33, "x", tileMaterial, colliders);
+    addWall(scene, 63, -29, 29, "x", tileMaterial, colliders);
+    addWall(scene, -62, 17, 35, "z", tileMaterial, colliders);
 
     addPlatform(scene, -58, -38, 26, 14, platformMaterial);
     addPlatform(scene, -34, 27, 22, 18, platformMaterial);
@@ -327,6 +341,7 @@ export default function Home() {
       cap.position.set(x, 11.92, z);
       cap.castShadow = true;
       scene.add(cap);
+      colliders.push({ minX: x - 2.65, maxX: x + 2.65, minZ: z - 2.65, maxZ: z + 2.65 });
     });
 
     const fixtureMaterial = new THREE.MeshBasicMaterial({ color: 0xdffeff });
@@ -383,15 +398,15 @@ export default function Home() {
     });
 
     const raycaster = new THREE.Raycaster();
+    raycaster.far = 5.6;
     const pointer = new THREE.Vector2();
     const clock = new THREE.Clock();
     const keys = new Set<string>();
     const up = new THREE.Vector3(0, 1, 0);
     const forward = new THREE.Vector3();
-    const side = new THREE.Vector3();
-    const movement = new THREE.Vector3();
     const plane = new THREE.Plane(up, 0);
     const planeHit = new THREE.Vector3();
+    const eyeHeight = 1.78;
     let frameId = 0;
     let accumulator = 0;
     let nextHint = 0;
@@ -399,6 +414,16 @@ export default function Home() {
     let lightning = 0;
 
     const toIndex = (x: number, z: number) => z * (segmentsX + 1) + x;
+
+    const isBlocked = (x: number, z: number) => {
+      const playerRadius = 0.76;
+      return colliders.some((collider) => (
+        x > collider.minX - playerRadius
+        && x < collider.maxX + playerRadius
+        && z > collider.minZ - playerRadius
+        && z < collider.maxZ + playerRadius
+      ));
+    };
 
     const waterHeightAt = (worldX: number, worldZ: number) => {
       const fx = clamp(((worldX + width / 2) / width) * segmentsX, 0, segmentsX);
@@ -468,14 +493,8 @@ export default function Home() {
       );
     };
 
-    const setPointer = (event: PointerEvent | MouseEvent) => {
-      const bounds = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
-      pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
-    };
-
-    const onClick = (event: MouseEvent) => {
-      setPointer(event);
+    const interactAtSight = () => {
+      pointer.set(0, 0);
       raycaster.setFromCamera(pointer, camera);
       const hits = raycaster.intersectObjects(fruitMeshes, false);
       const fruitId = hits[0]?.object.userData.collectibleId as number | undefined;
@@ -489,22 +508,39 @@ export default function Home() {
       }
     };
 
-    const onPointerMove = (event: PointerEvent) => {
-      setPointer(event);
-      raycaster.setFromCamera(pointer, camera);
-      const hit = raycaster.intersectObjects(fruitMeshes, false)[0];
-      renderer.domElement.style.cursor = hit ? "pointer" : "grab";
+    const onSceneClick = () => {
+      if (!controls.isLocked) {
+        controls.lock();
+        return;
+      }
+      interactAtSight();
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
+      if (
+        controls.isLocked
+        && ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)
+      ) {
         keys.add(key);
         event.preventDefault();
       }
     };
 
     const onKeyUp = (event: KeyboardEvent) => keys.delete(event.key.toLowerCase());
+
+    const onLock = () => {
+      setIsLocked(true);
+      setMessage("You wade into the backpools. Aim at fruit and click to recover it.");
+    };
+
+    const onUnlock = () => {
+      keys.clear();
+      setIsLocked(false);
+      setMessage("Paused at the waterline. Click the pool to wade back in.");
+    };
+
+    const onBlur = () => keys.clear();
 
     const onResize = () => {
       const rect = mount.getBoundingClientRect();
@@ -520,21 +556,27 @@ export default function Home() {
         setMessage("Every fruit has been found. Let the water settle.");
         return;
       }
-      controls.target.lerp(new THREE.Vector3(next.root.position.x, 0.9, next.root.position.z), 0.46);
+      camera.lookAt(next.root.position.x, camera.position.y, next.root.position.z);
       addImpulse(next.root.position.x, next.root.position.z, 0.5);
-      setMessage(`Signal blooming near a ${next.label.toLowerCase()}.`);
+      setMessage(`Your gaze turns toward a ${next.label.toLowerCase()} signal.`);
     };
 
     const makeRipple = () => {
-      addImpulse(controls.target.x, controls.target.z, 1.18);
-      setMessage("A clean wave crosses the tiled floor.");
+      controls.getDirection(forward);
+      const rippleAt = camera.position.clone().addScaledVector(forward, 5.4);
+      addImpulse(rippleAt.x, rippleAt.z, 1.18);
+      setMessage("A clean wave runs ahead of you.");
     };
 
-    apiRef.current = { focusNext, makeRipple };
-    renderer.domElement.addEventListener("click", onClick);
-    renderer.domElement.addEventListener("pointermove", onPointerMove);
+    const enterExperience = () => controls.lock();
+
+    apiRef.current = { enterExperience, focusNext, makeRipple };
+    renderer.domElement.addEventListener("click", onSceneClick);
+    controls.addEventListener("lock", onLock);
+    controls.addEventListener("unlock", onUnlock);
     window.addEventListener("keydown", onKeyDown, { passive: false });
     window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
     window.addEventListener("resize", onResize);
     onResize();
     addImpulse(-7, -2, 0.95);
@@ -551,27 +593,28 @@ export default function Home() {
         accumulator -= 1 / 36;
       }
 
-      movement.set(0, 0, 0);
-      camera.getWorldDirection(forward);
-      forward.y = 0;
-      forward.normalize();
-      side.crossVectors(forward, up).normalize();
-      const driftSpeed = 24 * delta;
-      if (keys.has("w") || keys.has("arrowup")) movement.addScaledVector(forward, driftSpeed);
-      if (keys.has("s") || keys.has("arrowdown")) movement.addScaledVector(forward, -driftSpeed);
-      if (keys.has("a") || keys.has("arrowleft")) movement.addScaledVector(side, -driftSpeed);
-      if (keys.has("d") || keys.has("arrowright")) movement.addScaledVector(side, driftSpeed);
-      if (movement.lengthSq() > 0) {
-        const nextTargetX = clamp(controls.target.x + movement.x, -70, 70);
-        const nextTargetZ = clamp(controls.target.z + movement.z, -43, 43);
-        movement.set(nextTargetX - controls.target.x, 0, nextTargetZ - controls.target.z);
-        controls.target.add(movement);
-        camera.position.add(movement);
+      const driftSpeed = 11.5 * delta;
+      const isMoving = controls.isLocked && (
+        keys.has("w") || keys.has("a") || keys.has("s") || keys.has("d")
+        || keys.has("arrowup") || keys.has("arrowdown") || keys.has("arrowleft") || keys.has("arrowright")
+      );
+      if (isMoving) {
+        const previousX = camera.position.x;
+        const previousZ = camera.position.z;
+        if (keys.has("w") || keys.has("arrowup")) controls.moveForward(driftSpeed);
+        if (keys.has("s") || keys.has("arrowdown")) controls.moveForward(-driftSpeed);
+        if (keys.has("a") || keys.has("arrowleft")) controls.moveRight(-driftSpeed);
+        if (keys.has("d") || keys.has("arrowright")) controls.moveRight(driftSpeed);
+        const nextX = clamp(camera.position.x, -84, 84);
+        const nextZ = clamp(camera.position.z, -54, 54);
+        camera.position.x = isBlocked(nextX, previousZ) ? previousX : nextX;
+        camera.position.z = isBlocked(camera.position.x, nextZ) ? previousZ : nextZ;
         if (elapsed > nextHint) {
-          addImpulse(controls.target.x, controls.target.z, 0.34);
+          addImpulse(camera.position.x, camera.position.z, 0.34);
           nextHint = elapsed + 0.42;
         }
       }
+      camera.position.y = eyeHeight + waterHeightAt(camera.position.x, camera.position.z);
 
       collectibles.forEach((fruit) => {
         if (!fruit.root.visible) return;
@@ -595,17 +638,18 @@ export default function Home() {
         renderer.toneMappingExposure += (1.16 - renderer.toneMappingExposure) * 0.16;
       }
 
-      controls.update();
       renderer.render(scene, camera);
     };
     animate();
 
     return () => {
       window.cancelAnimationFrame(frameId);
-      renderer.domElement.removeEventListener("click", onClick);
-      renderer.domElement.removeEventListener("pointermove", onPointerMove);
+      renderer.domElement.removeEventListener("click", onSceneClick);
+      controls.removeEventListener("lock", onLock);
+      controls.removeEventListener("unlock", onUnlock);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
       window.removeEventListener("resize", onResize);
       controls.dispose();
       scene.traverse((object) => {
@@ -622,10 +666,11 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="backpools-shell">
+    <main className={`backpools-shell${isLocked ? " is-immersed" : ""}`}>
       <div ref={mountRef} className="pool-canvas" aria-label="Interactive 3D Backpools water map" />
       <div className="film-grain" aria-hidden="true" />
       <div className="ambient-vignette" aria-hidden="true" />
+      <div className="reticle" aria-hidden="true"><span>+</span></div>
 
       <header className="topbar">
         <div className="wordmark" aria-label="Backpools">
@@ -640,7 +685,7 @@ export default function Home() {
 
       <section className="map-legend" aria-label="Map locations">
         <p className="eyebrow">POOL ATLAS / 04</p>
-        <h1>Find what drifted<br />below the surface.</h1>
+        <h1>Wade toward the<br />fruit-light.</h1>
         <div className="atlas-list">
           <span><i className="atlas-dot aqua" />01 — Entrance Channel</span>
           <span><i className="atlas-dot blue" />02 — Lantern Atrium</span>
@@ -651,7 +696,7 @@ export default function Home() {
       <section className="horizon-card" aria-live="polite">
         <div className="horizon-rule" />
         <p>{message}</p>
-        <span>CLICK WATER TO MAKE A RIPPLE</span>
+        <span>AIM WITH THE RETICLE · CLICK TO SPLASH OR COLLECT</span>
       </section>
 
       <aside className="interaction-dock" aria-label="Exploration controls">
@@ -667,8 +712,19 @@ export default function Home() {
 
       <footer className="footer-ui">
         <div className="control-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>drift through rooms</span></div>
-        <div className="control-hint desktop-hint"><span>drag</span><b>to orbit</b><i>·</i><span>scroll</span><b>to dive</b></div>
+        <div className="control-hint desktop-hint"><span>mouse</span><b>to look</b><i>·</i><kbd>ESC</kbd><b>to pause</b></div>
       </footer>
+
+      {!isLocked && !webglError ? (
+        <button
+          className="enter-pool"
+          type="button"
+          onClick={() => apiRef.current?.enterExperience()}
+        >
+          <span>ENTER THE WATER</span>
+          <small>First-person view · mouse look · WASD move</small>
+        </button>
+      ) : null}
 
       {webglError ? (
         <div className="webgl-fallback" role="status">
